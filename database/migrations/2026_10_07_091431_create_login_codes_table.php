@@ -1,0 +1,30 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('login_codes', function (Blueprint $table) {
+            $table->id();
+            $table->string('identifier')->index();
+            $table->string('channel', 5);
+            $table->string('role', 10)->default('traveler');
+            $table->string('code_hash');
+            $table->char('link_token_hash', 64)->nullable()->unique();
+            $table->unsignedTinyInteger('attempts')->default(0);
+            $table->timestamp('expires_at');
+            $table->timestamp('consumed_at')->nullable();
+            $table->string('ip_address', 45)->nullable();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('login_codes');
+    }
+};
