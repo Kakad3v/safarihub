@@ -8,22 +8,31 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('name')->nullable()->change();
-            $table->string('email')->nullable()->change();
-            $table->string('password')->nullable()->change();
-            $table->string('phone', 20)->nullable()->unique()->after('email');
-            $table->timestamp('phone_verified_at')->nullable()->after('phone');
-            $table->string('role', 10)->default('traveler')->index()->after('phone_verified_at');
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('name')->nullable();
+            $table->string('email')->nullable()->unique();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('phone', 20)->nullable()->unique();
+            $table->timestamp('phone_verified_at')->nullable();
+            $table->string('role', 10)->default('traveler')->index();
+            $table->rememberToken();
+            $table->timestamps();
+        });
+
+        Schema::create('sessions', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->foreignId('user_id')->nullable()->index();
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
+            $table->longText('payload');
+            $table->integer('last_activity')->index();
         });
     }
 
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropUnique(['phone']);
-            $table->dropIndex(['role']);
-            $table->dropColumn(['phone', 'phone_verified_at', 'role']);
-        });
+        Schema::dropIfExists('sessions');
+        Schema::dropIfExists('users');
     }
 };
