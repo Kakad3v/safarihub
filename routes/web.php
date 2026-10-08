@@ -16,6 +16,9 @@ Route::get('/login/link/{token}', MagicLinkController::class)
 
 Route::get('/operators/{profile:slug}', OperatorShow::class)->name('operators.show');
 
+Route::get('/trips/{package:slug}', fn(\App\Models\Package $package) => $package->title)
+    ->name('packages.show');
+    
 Route::middleware(['auth', 'operator'])->prefix('operator')->group(function () {
     Route::get('/packages/create', PackageForm::class)->name('operator.packages.create');
     Route::get('/packages/{package}/edit', PackageForm::class)->name('operator.packages.edit');
