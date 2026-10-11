@@ -17,6 +17,6 @@ class LoginCodeMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(markdown: 'mail.login-code');
+        return new Content(view: 'mail.login-code', text: 'mail.login-code');
     }
 }

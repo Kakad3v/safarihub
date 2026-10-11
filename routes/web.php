@@ -5,6 +5,7 @@ use App\Livewire\Auth\SignIn;
 use App\Livewire\Operators\OperatorShow;
 use App\Livewire\Operators\PackageForm;
 use App\Livewire\Trips\TripShow;
+use App\Mail\LoginCodeMail;
 use App\Models\Booking;
 use Illuminate\Support\Facades\Route;
 
@@ -30,3 +31,7 @@ Route::middleware(['auth', 'operator'])->prefix('operator')->group(function () {
     Route::get('/packages/create', PackageForm::class)->name('operator.packages.create');
     Route::get('/packages/{package}/edit', PackageForm::class)->name('operator.packages.edit');
 });
+
+if (app()->isLocal()) {
+    Route::get('/mail-preview/login-code', fn() => new LoginCodeMail('048213', url('/login/link/example')));
+}
