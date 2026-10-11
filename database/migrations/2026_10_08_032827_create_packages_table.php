@@ -11,38 +11,84 @@ return new class extends Migration
         Schema::create('packages', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('destination_id')->constrained()->restrictOnDelete();
-            $table->foreignId('category_id')->constrained()->restrictOnDelete();
-            $table->string('type', 20)->default('trip')->index();
+            $table->string('type', 12)->default('trip');
             $table->string('title');
             $table->string('slug')->unique();
-            $table->string('summary', 160)->nullable();
-            $table->text('description')->nullable();
-            $table->unsignedTinyInteger('duration_days')->nullable();
-            $table->decimal('duration_hours', 4, 1)->nullable();
-            $table->time('start_time')->nullable();
-            $table->string('meeting_point')->nullable();
-            $table->string('bring')->nullable();
-            $table->json('weekdays')->nullable();
+            $table->string('category', 30)->index();
+            $table->string('place', 80)->index();
+            $table->string('county', 60)->nullable();
+            $table->text('summary')->nullable();
+            $table->text('description');
+            $table->unsignedTinyInteger('featured_position')->nullable();
+            $table->unsignedTinyInteger('duration_days')->default(1);
+            $table->unsignedTinyInteger('nights')->default(0);
+            $table->unsignedTinyInteger('max_group')->default(6);
             $table->unsignedInteger('price');
-            $table->unsignedTinyInteger('child_discount_percent')->default(0);
-            $table->unsignedSmallInteger('max_group_size')->nullable();
-            $table->string('cancellation_policy', 20)->default('flexible');
-            $table->string('video_url')->nullable();
-            $table->string('status', 20)->default('draft');
-            $table->timestamp('published_at')->nullable();
-            $table->unsignedInteger('views_count')->default(0);
-            $table->decimal('rating_avg', 2, 1)->default(0);
-            $table->unsignedInteger('reviews_count')->default(0);
+            $table->unsignedTinyInteger('deposit_percent')->default(30);
+            $table->string('pickup_location')->nullable();
+            $table->string('pickup_time', 20)->nullable();
+            $table->text('meeting_details')->nullable();
+            $table->json('languages')->nullable();
+            $table->json('includes')->nullable();
+            $table->json('excludes')->nullable();
+            $table->json('itinerary')->nullable();
+            $table->boolean('featured')->default(false)->index();
+            $table->string('status', 12)->default('draft')->index();
             $table->timestamps();
-            $table->softDeletes();
-            $table->index(['status', 'price']);
-            $table->index(['destination_id', 'status']);
+        });
+
+        Schema::create('package_photos', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('package_id')->constrained()->cascadeOnDelete();
+            $table->string('path');
+            $table->string('alt')->nullable();
+            $table->string('focus', 20)->default('50% 50%');
+            $table->unsignedTinyInteger('position')->default(0);
+            $table->timestamps();
+        });
+
+        Schema::create('departures', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('package_id')->constrained()->cascadeOnDelete();
+            $table->date('starts_on')->index();
+            $table->date('ends_on');
+            $table->unsignedSmallInteger('seats');
+            $table->timestamps();
+        });
+
+        Schema::create('bookings', function (Blueprint $table) {
+            $table->id();
+            $table->string('reference', 12)->unique();
+            $table->foreignId('package_id')->constrained();
+            $table->foreignId('departure_id')->constrained();
+            $table->foreignId('user_id')->constrained();
+            $table->unsignedTinyInteger('travelers');
+            $table->unsignedInteger('total');
+            $table->unsignedInteger('deposit');
+            $table->unsignedInteger('balance');
+            $table->date('balance_due_on');
+            $table->string('status', 20)->default('pending')->index();
+            $table->timestamps();
+        });
+
+        Schema::create('reviews', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('package_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->unsignedTinyInteger('rating');
+            $table->text('body');
+            $table->date('travelled_on')->nullable();
+            $table->timestamps();
+            $table->unique(['package_id', 'user_id']);
         });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('reviews');
+        Schema::dropIfExists('bookings');
+        Schema::dropIfExists('departures');
+        Schema::dropIfExists('package_photos');
         Schema::dropIfExists('packages');
     }
 };

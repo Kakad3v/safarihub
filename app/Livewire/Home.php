@@ -2,6 +2,8 @@
 
 namespace App\Livewire;
 
+use App\Models\Package;
+use App\Models\Review;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -11,6 +13,14 @@ use Livewire\Component;
 class Home extends Component
 {
     public const CATEGORIES = ['Safaris', 'Beach stays', 'Hikes', 'Day trips', 'Boat trips'];
+
+    private const COLORS = [
+        'Safaris' => '#D9A93E',
+        'Beach stays' => '#E6CFA0',
+        'Hikes' => '#7FA66A',
+        'Day trips' => '#3E9FB0',
+        'Boat trips' => '#5FB3BF',
+    ];
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -64,59 +74,93 @@ class Home extends Component
 
     public function render()
     {
-        $all = collect($this->trips());
+        $all = Package::published()
+            ->with(['photos', 'user.operatorProfile', 'latestReview.user'])
+            ->withCount('reviews')
+            ->withAvg('reviews', 'rating')
+            ->get();
+
         $needle = strtolower($this->search);
 
         $trips = $all
             ->when($this->category !== '', fn($c) => $c->where('category', $this->category))
             ->when($needle !== '', fn($c) => $c->filter(
-                fn($t) => str_contains(strtolower($t['title'] . ' ' . $t['place'] . ' ' . $t['operator']), $needle)
+                fn($p) => str_contains(strtolower($p->title . ' ' . $p->place . ' ' . $this->operatorName($p)), $needle)
             ))
             ->when($this->onlySaved, fn($c) => $c->whereIn('id', $this->saved))
+            ->sortByDesc('featured')
             ->values();
 
-        $destinations = collect($this->destinations())
-            ->map(fn($d) => $d + ['count' => $all->where('place', $d['place'])->count()]);
+        $destinations = $all->groupBy('place')->map(fn($group, $place) => [
+            'place' => $place,
+            'county' => $group->first()->county,
+            'count' => $group->count(),
+            'photo' => $group->first(fn($p) => $p->photos->isNotEmpty())?->photos->first(),
+            'color' => self::COLORS[$group->first()->category] ?? '#BFD3D0',
+        ])->sortByDesc('count')->values();
 
         return view('livewire.home', [
             'trips' => $trips,
-            'featured' => $all->first(),
             'destinations' => $destinations,
+            'heroPackages' => $this->heroPackages($all),
             'reviews' => $this->reviews(),
             'categories' => self::CATEGORIES,
+            'colors' => self::COLORS,
             'user' => Auth::user(),
         ]);
     }
 
-    private function trips(): array
+    private function heroPackages($all): array
     {
-        return [
-            ['id' => 1, 'title' => '3-day safari', 'place' => 'Masai Mara', 'category' => 'Safaris', 'operator' => 'Coastline Safaris', 'rating' => 4.9, 'reviews' => 128, 'price' => 28500, 'duration' => '3 days', 'color' => '#D9A93E', 'image' => 'masai-mara'],
-            ['id' => 2, 'title' => 'Dolphin day trip', 'place' => 'Wasini', 'category' => 'Boat trips', 'operator' => 'Pwani Dhow Tours', 'rating' => 4.8, 'reviews' => 96, 'price' => 6500, 'duration' => '1 day', 'color' => '#5FB3BF', 'image' => 'wasini'],
-            ['id' => 3, 'title' => 'Beach escape, 2 nights', 'place' => 'Diani', 'category' => 'Beach stays', 'operator' => 'Coastline Safaris', 'rating' => 4.7, 'reviews' => 74, 'price' => 14000, 'duration' => '2 nights', 'color' => '#E6CFA0', 'image' => 'diani'],
-            ['id' => 4, 'title' => 'Snorkelling day trip', 'place' => 'Mpunguti', 'category' => 'Day trips', 'operator' => 'Pwani Dhow Tours', 'rating' => 4.8, 'reviews' => 52, 'price' => 5500, 'duration' => '1 day', 'color' => '#3E9FB0', 'image' => null],
-            ['id' => 5, 'title' => 'Sunrise hike', 'place' => 'Chullu hills', 'category' => 'Hikes', 'operator' => 'Taita Trails', 'rating' => 4.6, 'reviews' => 31, 'price' => 3500, 'duration' => '1 day', 'color' => '#7FA66A', 'image' => null],
-            ['id' => 6, 'title' => 'Sunset dhow cruise', 'place' => 'Diani', 'category' => 'Boat trips', 'operator' => 'Pwani Dhow Tours', 'rating' => 4.9, 'reviews' => 88, 'price' => 4000, 'duration' => 'Evening', 'color' => '#E59D6B', 'image' => 'diani'],
-        ];
-    }
+        $featured = $all->where('featured', true)->sortBy(fn($p) => $p->featured_position ?? 99)->values();
 
-    private function destinations(): array
-    {
-        return [
-            ['place' => 'Masai Mara', 'tagline' => 'Safaris on the savannah', 'color' => '#D9A93E', 'image' => 'masai-mara'],
-            ['place' => 'Diani', 'tagline' => 'White sand and dhow sunsets', 'color' => '#E6CFA0', 'image' => 'diani'],
-            ['place' => 'Wasini', 'tagline' => 'Dolphins and coral gardens', 'color' => '#5FB3BF', 'image' => 'wasini'],
-            ['place' => 'Mpunguti', 'tagline' => 'Marine park snorkelling', 'color' => '#3E9FB0', 'image' => null],
-            ['place' => 'Chullu hills', 'tagline' => 'Sunrise hikes in Taita', 'color' => '#7FA66A', 'image' => null],
-        ];
+        if ($featured->isEmpty()) {
+            $featured = $all->take(3);
+        }
+
+        return $featured
+            ->filter(fn($p) => $p->photos->isNotEmpty())
+            ->map(fn($p) => [
+                'id' => $p->id,
+                'url' => route('trips.show', $p),
+                'place' => $p->place,
+                'tab' => $p->place,
+                'title' => $p->title,
+                'operator' => $this->operatorName($p),
+                'duration' => $p->durationLabel(),
+                'price' => $p->price,
+                'color' => self::COLORS[$p->category] ?? '#BFD3D0',
+                'review' => $p->latestReview?->body ?? '',
+                'reviewer' => $p->latestReview
+                    ? str($p->latestReview->user->name ?: 'Traveler')->before(' ') . ', ' . number_format($p->latestReview->rating, 1) . ' for ' . $p->title
+                    : '',
+                'images' => $p->photos->map(fn($photo) => [
+                    'src' => $photo->url,
+                    'alt' => (string) $photo->alt,
+                    'pos' => $photo->focus,
+                ])->all(),
+            ])
+            ->values()
+            ->all();
     }
 
     private function reviews(): array
     {
-        return [
-            ['The guide knew every animal by name and the price was exactly what we paid. No surprises.', 'Wanjiru', 'Masai Mara safari', 5.0],
-            ['Booked on my phone in five minutes and chatted with the operator before paying.', 'Brian', 'Wasini dolphin trip', 4.9],
-            ['Sunrise from the top was worth the early start. Our guide kept the pace easy for everyone.', 'Amina', 'Chullu hills hike', 4.7],
-        ];
+        return Review::with(['user', 'package'])
+            ->latest()
+            ->limit(3)
+            ->get()
+            ->map(fn($r) => [
+                $r->body,
+                (string) str($r->user->name ?: 'Traveler')->before(' '),
+                $r->package->title,
+                (float) $r->rating,
+            ])
+            ->all();
+    }
+
+    private function operatorName(Package $package): string
+    {
+        return $package->user->operatorProfile?->business_name ?? $package->user->name;
     }
 }

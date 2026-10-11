@@ -2,58 +2,49 @@
 
 namespace App\Models;
 
-use App\Enums\CancellationPolicy;
-use App\Enums\PackageStatus;
-use App\Enums\PackageType;
-use App\Models\Destination;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Str;
-use Spatie\Image\Enums\Fit;
-use Spatie\MediaLibrary\HasMedia;
-use Spatie\MediaLibrary\InteractsWithMedia;
-use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
-class Package extends Model implements HasMedia
+class Package extends Model
 {
-    use InteractsWithMedia, SoftDeletes;
-
-    protected $guarded = [];
+    protected $fillable = [
+        'user_id',
+        'type',
+        'title',
+        'slug',
+        'category',
+        'place',
+        'county',
+        'summary',
+        'description',
+        'duration_days',
+        'nights',
+        'max_group',
+        'price',
+        'deposit_percent',
+        'pickup_location',
+        'pickup_time',
+        'meeting_details',
+        'languages',
+        'includes',
+        'excludes',
+        'itinerary',
+        'featured',
+        'status',
+    ];
 
     protected function casts(): array
     {
         return [
-            'type' => PackageType::class,
-            'status' => PackageStatus::class,
-            'cancellation_policy' => CancellationPolicy::class,
-            'weekdays' => 'array',
-            'duration_hours' => 'float',
-            'published_at' => 'datetime',
+            'languages' => 'array',
+            'includes' => 'array',
+            'excludes' => 'array',
+            'itinerary' => 'array',
+            'featured' => 'boolean',
         ];
-    }
-
-    protected static function booted(): void
-    {
-        static::creating(function (Package $package) {
-            $package->slug ??= static::uniqueSlug($package->title);
-        });
-    }
-
-    public static function uniqueSlug(string $title): string
-    {
-        $base = Str::slug($title) ?: 'package';
-        $slug = $base;
-        $i = 2;
-
-        while (static::withTrashed()->where('slug', $slug)->exists()) {
-            $slug = $base . '-' . $i++;
-        }
-
-        return $slug;
     }
 
     public function getRouteKeyName(): string
@@ -61,71 +52,58 @@ class Package extends Model implements HasMedia
         return 'slug';
     }
 
-    public function operator(): BelongsTo
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class);
     }
 
-    public function destination(): BelongsTo
+    public function photos(): HasMany
     {
-        return $this->belongsTo(Destination::class);
-    }
-
-    public function category(): BelongsTo
-    {
-        return $this->belongsTo(Category::class);
-    }
-
-    public function days(): HasMany
-    {
-        return $this->hasMany(PackageDay::class)->orderBy('day_number');
-    }
-
-    public function inclusions(): HasMany
-    {
-        return $this->hasMany(PackageInclusion::class)->orderBy('sort_order');
-    }
-
-    public function included(): HasMany
-    {
-        return $this->inclusions()->where('is_included', true);
-    }
-
-    public function excluded(): HasMany
-    {
-        return $this->inclusions()->where('is_included', false);
+        return $this->hasMany(PackagePhoto::class)->orderBy('position');
     }
 
     public function departures(): HasMany
     {
-        return $this->hasMany(PackageDeparture::class)->orderBy('starts_on');
+        return $this->hasMany(Departure::class);
     }
 
-    public function scopePublished(Builder $query): Builder
+    public function bookings(): HasMany
     {
-        return $query->where('status', PackageStatus::Published)
-            ->whereHas('operator', fn($q) => $q->where('status', 'verified'));
+        return $this->hasMany(Booking::class);
     }
 
-    public function registerMediaCollections(): void
+    public function reviews(): HasMany
     {
-        $this->addMediaCollection('photos');
+        return $this->hasMany(Review::class);
     }
 
-    public function registerMediaConversions(?Media $media = null): void
+    public function latestReview(): HasOne
     {
-        $this->addMediaConversion('card')->fit(Fit::Crop, 800, 600)->format('webp')->nonQueued();
+        return $this->hasOne(Review::class)->latestOfMany();
     }
 
-    protected function coverUrl(): Attribute
+    public function scopePublished(Builder $query): void
     {
-        return Attribute::get(fn() => $this->getFirstMediaUrl('photos', 'card') ?: null);
+        $query->where('status', 'published');
     }
 
-    protected function durationLabel(): Attribute
+    public function durationLabel(): string
     {
-        return Attribute::get(fn() => $this->type === PackageType::Trip
-            ? $this->duration_days . ' ' . Str::plural('day', $this->duration_days)
-            : (float) $this->duration_hours . ' ' . Str::plural('hour', (int) ceil($this->duration_hours)));
+        return $this->duration_days > 1
+            ? "{$this->duration_days} days, {$this->nights} nights"
+            : '1 day';
+    }
+
+    public function quote(int $travelers, Departure $departure): array
+    {
+        $total = $this->price * $travelers;
+        $deposit = (int) round($total * $this->deposit_percent / 100);
+
+        return [
+            'total' => $total,
+            'deposit' => $deposit,
+            'balance' => $total - $deposit,
+            'due_on' => $departure->balanceDueOn(),
+        ];
     }
 }
