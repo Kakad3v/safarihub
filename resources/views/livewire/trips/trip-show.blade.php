@@ -90,13 +90,14 @@
                 </div>
 
                 @if ($photos->count() > 1)
-                    <div class="mt-2 flex gap-2">
+                    <div
+                        class="mt-2 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         @foreach ($photos as $k => $photo)
                             <button type="button" aria-label="Show photo {{ $k + 1 }}"
                                 x-on:click="i = {{ $k }}"
                                 x-bind:class="i === {{ $k }} ? 'border-accent opacity-100' :
-                                    'border-transparent opacity-65'"
-                                class="h-[52px] flex-1 overflow-hidden rounded-lg border-2">
+                                    'border-transparent opacity-75'"
+                                class="h-[72px] w-[108px] shrink-0 overflow-hidden rounded-lg border-2">
                                 <img src="{{ $photo->url }}" alt=""
                                     style="object-position: {{ $photo->focus }}" class="h-full w-full object-cover">
                             </button>
