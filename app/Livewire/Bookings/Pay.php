@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Departure;
 use App\Models\Payment;
 use App\Services\Payments\PaystackGateway;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
