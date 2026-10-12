@@ -10,7 +10,10 @@ use App\Livewire\Profile\OperatorSettings;
 use App\Livewire\Profile\TravelerProfile;
 use App\Livewire\Trips\TripShow;
 use App\Mail\LoginCodeMail;
-use App\Models\Booking;
+use App\Http\Controllers\Payments\PaystackCallbackController;
+use App\Http\Controllers\Payments\PaystackWebhookController;
+use App\Livewire\Bookings\Pay as BookingPay;
+use App\Livewire\Bookings\Show as BookingShow;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -28,15 +31,15 @@ Route::get('/trips/{package:slug}', TripShow::class)->name('trips.show');
 
 Route::get('/shared/{memory:share_token}', SharedMemory::class)->name('memories.shared');
 
+Route::post('/webhooks/paystack', PaystackWebhookController::class)->name('webhooks.paystack');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', fn() => redirect()->route(auth()->user()->isOperator() ? 'operator.profile' : 'me'))->name('profile');
     Route::get('/me', TravelerProfile::class)->name('me');
 
-    Route::get('/bookings/{booking:reference}/pay', function (Booking $booking) {
-        abort_unless($booking->user_id === auth()->id(), 403);
-
-        return 'Booking ' . $booking->reference . ' is waiting for its deposit. Payment is the next step.';
-    })->name('bookings.pay');
+    Route::get('/bookings/{booking:reference}', BookingShow::class)->name('bookings.show');
+    Route::get('/bookings/{booking:reference}/pay', BookingPay::class)->name('bookings.pay');
+    Route::get('/payments/paystack/callback', PaystackCallbackController::class)->name('payments.callback');
 
     Route::post('/logout', function () {
         Auth::logout();

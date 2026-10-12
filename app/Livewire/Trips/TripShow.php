@@ -13,7 +13,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
-class TripShow extends Component
+class Tripshow extends Component
 {
     public Package $package;
 
@@ -151,6 +151,7 @@ class TripShow extends Component
                 'balance' => $quote['balance'],
                 'balance_due_on' => $quote['due_on'],
                 'status' => 'pending',
+                'expires_at' => now()->addMinutes(config('safarihub.booking.hold_minutes')),
             ]);
         });
 

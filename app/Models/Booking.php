@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Booking extends Model
@@ -20,11 +21,15 @@ class Booking extends Model
         'balance',
         'balance_due_on',
         'status',
+        'expires_at',
     ];
 
     protected function casts(): array
     {
-        return ['balance_due_on' => 'date'];
+        return [
+            'balance_due_on' => 'date',
+            'expires_at' => 'datetime',
+        ];
     }
 
     public function getRouteKeyName(): string
@@ -47,9 +52,27 @@ class Booking extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
     public function scopeActive(Builder $query): void
     {
-        $query->whereIn('status', ['deposit_paid', 'paid']);
+        $query->where(function (Builder $q) {
+            $q->whereIn('status', ['deposit_paid', 'paid'])
+                ->orWhere(fn(Builder $p) => $p->where('status', 'pending')->where('expires_at', '>', now()));
+        });
+    }
+
+    public function paidAmount(): int
+    {
+        return (int) $this->payments()->where('status', 'success')->sum('amount');
+    }
+
+    public function holdIsActive(): bool
+    {
+        return $this->status === 'pending' && $this->expires_at?->isFuture();
     }
 
     public static function newReference(): string

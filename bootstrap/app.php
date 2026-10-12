@@ -14,6 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
     $middleware->alias(['operator' => \App\Http\Middleware\EnsureOperator::class]);
+    
+    $middleware->preventRequestForgery(except: ['webhooks/paystack']);
 })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -9,5 +9,10 @@ return [
 
     'booking' => [
         'balance_due_days' => 14,
+        'hold_minutes' => 15,
+    ],
+
+    'payments' => [
+        'display_rates' => ['USD' => 0.0077, 'EUR' => 0.0066, 'GBP' => 0.0058],
     ],
 ];
