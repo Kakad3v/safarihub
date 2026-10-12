@@ -7,12 +7,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'email', 'phone', 'role'];
+    protected $fillable = ['name', 'email', 'phone', 'role', 'avatar_path', 'country'];
 
     protected $hidden = ['remember_token'];
 
@@ -42,5 +43,31 @@ class User extends Authenticatable
     public function packages(): HasMany
     {
         return $this->hasMany(Package::class);
+    }
+
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class);
+    }
+
+    public function memories(): HasMany
+    {
+        return $this->hasMany(Memory::class);
+    }
+
+    public function avatarUrl(): ?string
+    {
+        return $this->avatar_path ? Storage::disk('public')->url($this->avatar_path) : null;
+    }
+
+    public function initials(): string
+    {
+        $name = $this->operatorProfile?->business_name ?? $this->name;
+
+        return collect(explode(' ', trim((string) $name)))
+            ->filter()
+            ->map(fn($word) => mb_strtoupper(mb_substr($word, 0, 1)))
+            ->take(2)
+            ->implode('') ?: '?';
     }
 }

@@ -29,15 +29,17 @@
 
                 <x-auth.theme-toggle />
 
-                @if ($user)
-                    <button type="button" wire:click="logout"
-                        class="rounded-full bg-accent px-3.5 py-[7px] text-[13px] font-semibold text-on-accent">Sign
-                        out</button>
+                @auth
+                    <a href="{{ route('profile') }}" wire:navigate
+                        class="flex items-center gap-2 rounded-full border border-line bg-surface py-1 pl-1 pr-3 text-[13px] font-semibold">
+                        <x-avatar :user="auth()->user()" class="size-7 text-xs" />
+                        <span
+                            class="hidden sm:inline">{{ str(auth()->user()->operatorProfile?->business_name ?? auth()->user()->name ?: 'Account')->before(' ') }}</span>
+                    </a>
                 @else
                     <a href="{{ route('login') }}" wire:navigate
-                        class="rounded-full bg-accent px-3.5 py-[7px] text-[13px] font-semibold text-on-accent">Sign
-                        in</a>
-                @endif
+                        class="rounded-full bg-accent px-3.5 py-[7px] text-[13px] font-semibold text-on-accent">Sign in</a>
+                @endauth
             </div>
         </div>
     </header>

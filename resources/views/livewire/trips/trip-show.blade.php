@@ -314,35 +314,41 @@
                     <div
                         class="grid gap-3.5 rounded-xl border border-line bg-surface p-3.5 min-[640px]:grid-cols-[1fr_auto] min-[640px]:items-center">
                         <div class="flex items-center gap-3">
-                            <span
-                                class="grid size-12 shrink-0 place-items-center rounded-full bg-soft font-display font-bold">{{ $initials }}</span>
-                            <div>
+                            <x-avatar :user="$operator" class="size-12 text-base" />
+                            @if ($operator->operatorProfile)
+                                <a href="{{ route('operators.show', $operator->operatorProfile) }}" wire:navigate
+                                    class="hover:underline">
+                                    <h3 class="font-display text-base font-bold">{{ $operatorName }}</h3>
+                                </a>
+                            @else
                                 <h3 class="font-display text-base font-bold">{{ $operatorName }}</h3>
-                                @if ($operator->operatorProfile?->county)
-                                    <p class="text-sm text-muted">Based in {{ $operator->operatorProfile->county }}
-                                    </p>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="rounded-lg bg-soft px-3 py-2.5">
-                            <b
-                                class="block font-display text-lg font-bold">{{ $operator->packages()->published()->count() }}</b>
-                            <small class="text-xs text-muted">Packages on SafariHub</small>
+                            @endif
+
+                            @if ($operator->operatorProfile?->county)
+                                <p class="text-sm text-muted">Based in {{ $operator->operatorProfile->county }}
+                                </p>
+                            @endif
                         </div>
                     </div>
-                </section>
+                    <div class="rounded-lg bg-soft px-3 py-2.5">
+                        <b
+                            class="block font-display text-lg font-bold">{{ $operator->packages()->published()->count() }}</b>
+                        <small class="text-xs text-muted">Packages on SafariHub</small>
+                    </div>
             </div>
+            </section>
         </div>
     </div>
+</div>
 
-    <div
-        class="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between gap-3 border-t border-line bg-surface px-4 pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom,0px))] min-[960px]:hidden">
-        <div>
-            <b class="font-display text-lg font-bold">KES {{ number_format($package->price) }}</b>
-            <small class="block text-xs text-muted">per person</small>
-        </div>
-        <button type="button" wire:click="reserve" wire:loading.attr="disabled" wire:target="reserve"
-            @disabled(!$departure)
-            class="rounded-md bg-accent px-[22px] py-[11px] font-semibold text-on-accent disabled:opacity-60">Reserve</button>
+<div
+    class="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between gap-3 border-t border-line bg-surface px-4 pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom,0px))] min-[960px]:hidden">
+    <div>
+        <b class="font-display text-lg font-bold">KES {{ number_format($package->price) }}</b>
+        <small class="block text-xs text-muted">per person</small>
     </div>
+    <button type="button" wire:click="reserve" wire:loading.attr="disabled" wire:target="reserve"
+        @disabled(!$departure)
+        class="rounded-md bg-accent px-[22px] py-[11px] font-semibold text-on-accent disabled:opacity-60">Reserve</button>
+</div>
 </div>

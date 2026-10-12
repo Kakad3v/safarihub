@@ -14,6 +14,8 @@
         const theme = localStorage.getItem('theme');
         if (theme) document.documentElement.dataset.theme = theme;
     </script>
+
+    @stack('head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 

@@ -2,14 +2,19 @@
 
 use App\Http\Controllers\Auth\MagicLinkController;
 use App\Livewire\Auth\SignIn;
+use App\Livewire\Home;
+use App\Livewire\Memories\Shared as SharedMemory;
 use App\Livewire\Operators\OperatorShow;
 use App\Livewire\Operators\PackageForm;
+use App\Livewire\Profile\OperatorSettings;
+use App\Livewire\Profile\TravelerProfile;
 use App\Livewire\Trips\TripShow;
 use App\Mail\LoginCodeMail;
 use App\Models\Booking;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', \App\Livewire\Home::class)->name('home');
+Route::get('/', Home::class)->name('home');
 
 Route::get('/login', SignIn::class)->name('login');
 
@@ -21,13 +26,29 @@ Route::get('/operators/{profile:slug}', OperatorShow::class)->name('operators.sh
 
 Route::get('/trips/{package:slug}', TripShow::class)->name('trips.show');
 
-Route::get('/bookings/{booking:reference}/pay', function (Booking $booking) {
-    abort_unless($booking->user_id === auth()->id(), 403);
+Route::get('/shared/{memory:share_token}', SharedMemory::class)->name('memories.shared');
 
-    return 'Booking ' . $booking->reference . ' is waiting for its deposit. Payment is the next step.';
-})->middleware('auth')->name('bookings.pay');
-    
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', fn() => redirect()->route(auth()->user()->isOperator() ? 'operator.profile' : 'me'))->name('profile');
+    Route::get('/me', TravelerProfile::class)->name('me');
+
+    Route::get('/bookings/{booking:reference}/pay', function (Booking $booking) {
+        abort_unless($booking->user_id === auth()->id(), 403);
+
+        return 'Booking ' . $booking->reference . ' is waiting for its deposit. Payment is the next step.';
+    })->name('bookings.pay');
+
+    Route::post('/logout', function () {
+        Auth::logout();
+        request()->session()->invalidate();
+        request()->session()->regenerateToken();
+
+        return redirect()->route('home');
+    })->name('logout');
+});
+
 Route::middleware(['auth', 'operator'])->prefix('operator')->group(function () {
+    Route::get('/', OperatorSettings::class)->name('operator.profile');
     Route::get('/packages/create', PackageForm::class)->name('operator.packages.create');
     Route::get('/packages/{package}/edit', PackageForm::class)->name('operator.packages.edit');
 });
